@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -7,6 +8,25 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
+// ✅ MongoDB 연결
+const MONGO_URI = 'mongodb+srv://hadu9561:Hadu956132!@cluster0.vmw8p3p.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0';
+
+mongoose.connect(MONGO_URI)
+  .then(() => console.log('✅ MongoDB 연결 성공!'))
+  .catch(err => console.error('❌ MongoDB 연결 실패:', err));
+
+
+// ✅ 메시지 스키마/모델 정의
+const messageSchema = new mongoose.Schema({
+  sender: String,
+  text: String,
+  time: String,
+  type: String
+}, { timestamps: true });
+
+const Message = mongoose.model('Message', messageSchema);
+
+// ✅ 클라이언트 정적 파일 서비스
 app.use(express.static(path.join(__dirname, 'client')));
 
 app.get('/', (req, res) => {
@@ -20,28 +40,36 @@ io.on('connection', (socket) => {
   userCount++;
   io.emit('user count', userCount);
 
+  // ✅ 이전 메시지 보내기
+  Message.find().sort({ createdAt: 1 }).limit(50).then(messages => {
+    socket.emit('chat history', messages);
+  });
+
   socket.on('set nickname', (nickname) => {
     socket.nickname = nickname;
-    const message = `🟢 ${nickname} 님이 입장했습니다.`;
-    io.emit('chat message', {
-      text: message,
+    const msg = {
+      text: `🟢 ${nickname} 님이 입장했습니다.`,
       time: getCurrentTime(),
       type: 'system'
-    });
+    };
+    io.emit('chat message', msg);
+
+    // 저장
+    new Message(msg).save().catch(err => console.error('시스템 메시지 저장 실패:', err));
   });
 
-  socket.on('chat message', (msg) => {
-    // msg가 "닉네임: 내용" 형식이면, 분리해서 객체로 보낼 수도 있고,
-    // 아니면 msg에 닉네임을 따로 포함해 보내도 됨
+  socket.on('chat message', (msgText) => {
     const nickname = socket.nickname || '익명';
-
-    io.emit('chat message', {
-      text: msg,
+    const messageData = {
+      text: msgText,
       sender: nickname,
-      time: getCurrentTime()
-    });
-  });
+      time: getCurrentTime(),
+      type: 'user'
+    };
 
+    io.emit('chat message', messageData);
+    new Message(messageData).save().catch(err => console.error('메시지 저장 실패:', err));
+  });
 
   socket.on('disconnect', () => {
     console.log('사용자 연결 종료:', socket.id);
@@ -49,29 +77,28 @@ io.on('connection', (socket) => {
     io.emit('user count', userCount);
 
     if (socket.nickname) {
-      const message = `🔴 ${socket.nickname} 님이 퇴장했습니다.`;
-      io.emit('chat message', {
-        text: message,
+      const msg = {
+        text: `🔴 ${socket.nickname} 님이 퇴장했습니다.`,
         time: getCurrentTime(),
         type: 'system'
-      });
+      };
+      io.emit('chat message', msg);
+      new Message(msg).save().catch(err => console.error('시스템 메시지 저장 실패:', err));
     }
   });
 });
 
+// ✅ 시간 포맷 함수
 function getCurrentTime() {
   const now = new Date();
-  const koreaTime = new Date(now.getTime() + 9 * 60 * 60 * 1000);
-  const hours = koreaTime.getUTCHours().toString().padStart(2, '0');
-  const minutes = koreaTime.getUTCMinutes().toString().padStart(2, '0');
-  return `${hours}:${minutes}`;
+  return now.toLocaleTimeString('ko-KR', {
+    hour: '2-digit',
+    minute: '2-digit'
+  });
 }
 
+// ✅ 서버 실행
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
   console.log(`서버가 실행 중입니다! 포트: ${PORT}`);
 });
-
-// server.listen(3001, () => {
-//   console.log('서버가 실행 중입니다! 주소: http://localhost:3001');
-// });

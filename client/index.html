@@ -63,7 +63,6 @@
         font-size: 16px;
       }
 
-
       #messages {
         display: flex;
         flex-direction: column;
@@ -73,7 +72,7 @@
         padding: 0 10px;
         width: 100%;
         max-width: 600px;
-        margin: 10;
+        margin: 10px 0;
       }
 
       .message-box {
@@ -83,15 +82,16 @@
         margin: 5px 0;
         display: inline-block;
         max-width: 70%;
+        word-break: break-word;
       }
 
       .my-message {
-        background-color: #fff8b5; /* 노랑 */
+        background-color: #fff8b5;
         align-self: flex-end;
       }
 
       .system-message {
-        background-color: #e0e0e0; /* 회색 */
+        background-color: #e0e0e0;
         color: #555;
         font-style: italic;
         text-align: center;
@@ -108,6 +108,7 @@
         text-align: center;
         margin: 8px 0 4px 0;
       }
+
       @media (max-width: 600px) {
         body {
           font-size: 16px;
@@ -132,23 +133,23 @@
         }
 
         #form {
-          flex-direction: row; /* 가로 배치 */
-          align-items: center; /* 세로 중앙 정렬 */
+          flex-direction: row;
+          align-items: center;
           gap: 8px;
           padding: 10px;
         }
 
         #form input {
-          flex: 1;  /* 입력창이 가능한 넓이 차지 */
+          flex: 1;
           font-size: 16px;
           padding: 10px;
         }
 
         #form button {
-          flex: 0 0 auto;  /* 버튼 크기 고정 */
+          flex: 0 0 auto;
           font-size: 14px;
           padding: 8px 12px;
-          min-width: 60px; /* 너무 작아지지 않게 최소 크기 지정 */
+          min-width: 60px;
         }
 
         #messages {
@@ -174,7 +175,6 @@
           margin-bottom: 10px;
         }
       }
-
     </style>
   </head>
   <body>
@@ -190,7 +190,7 @@
     <!-- 채팅 화면 -->
     <div id="chat-section" style="display:none;">
       <form id="form">
-        <input id="input" placeholder="메시지를 입력하세요" />
+        <input id="input" placeholder="메시지를 입력하세요" autocomplete="off"/>
         <button>전송</button>
       </form>
       <ul id="messages"></ul>
@@ -200,12 +200,14 @@
     <script>
       const socket = io();
       let nickname = '';
-      let prevTime = null; // ⬅️ 시간 비교 변수
+      let prevTime = null;
 
       const nicknameInput = document.getElementById('nickname-input');
       const nicknameButton = document.getElementById('nickname-button');
       const nicknameSection = document.getElementById('nickname-section');
       const chatSection = document.getElementById('chat-section');
+      const messages = document.getElementById('messages');
+      const input = document.getElementById('input');
 
       nicknameButton.addEventListener('click', () => {
         const name = nicknameInput.value.trim();
@@ -214,35 +216,54 @@
           socket.emit('set nickname', nickname);
           nicknameSection.style.display = 'none';
           chatSection.style.display = 'block';
+          input.focus();
         }
       });
 
-      const form = document.getElementById('form');
-      const input = document.getElementById('input');
-      const messages = document.getElementById('messages');
-
       form.addEventListener('submit', function (e) {
         e.preventDefault();
-        if (input.value) {
-          socket.emit('chat message', `${nickname}: ${input.value}`);
+        if (input.value.trim()) {
+          socket.emit('chat message', `${nickname}: ${input.value.trim()}`);
           input.value = '';
         }
       });
 
-      socket.on('chat message', function (data) {
-        const item = document.createElement('li');
-        const box = document.createElement('div');
-        box.classList.add('message-box');
+      // 채팅 기록 받기
+      socket.on('chat history', function (history) {
+        prevTime = null; // 초기화
+        // 기록 순서대로 렌더링 (오래된 메시지부터)
+        history.forEach((data) => {
+          renderMessage(data, false);
+        });
+        // 최신 메시지가 보이도록 스크롤 맨 아래로
+        messages.scrollTop = messages.scrollHeight;
+      });
 
-        // 시간 비교 및 표시
+      // 새 메시지 받기
+      socket.on('chat message', function (data) {
+        renderMessage(data, true);
+      });
+
+      // 메시지 렌더링 함수
+      // isNew: true면 prepend 대신 append로 넣음 (최신 메시지는 아래로)
+      function renderMessage(data, isNew = true) {
         const currentTime = data.time;
+        // 시간 표시: 이전 시간과 다르면 시간 라벨 표시
         if (prevTime === null || prevTime !== currentTime) {
           const timeElem = document.createElement('div');
           timeElem.textContent = currentTime;
           timeElem.classList.add('time-label');
-          messages.prepend(timeElem);
+          if (isNew) {
+            messages.appendChild(timeElem);
+          } else {
+            messages.insertBefore(timeElem, messages.firstChild);
+          }
+          prevTime = currentTime;
         }
-        prevTime = currentTime;
+
+        const item = document.createElement('li');
+        const box = document.createElement('div');
+        box.classList.add('message-box');
 
         if (data.type === 'system') {
           box.classList.add('system-message');
@@ -258,11 +279,17 @@
         }
 
         item.appendChild(box);
-        messages.prepend(item);
-      });
+        if (isNew) {
+          messages.appendChild(item);
+          // 새 메시지 오면 스크롤 아래로 이동
+          messages.scrollTop = messages.scrollHeight;
+        } else {
+          messages.insertBefore(item, messages.firstChild);
+        }
+      }
 
+      // 사용자 수 표시
       socket.on('user count', function (count) {
-        console.log('👥 사용자 수 업데이트됨:', count);
         document.title = `채팅방 (${count}명 접속 중)`;
         document.getElementById('user-count').textContent = `${count}명 접속 중`;
       });

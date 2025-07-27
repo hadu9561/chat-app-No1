@@ -67,6 +67,11 @@ function getCurrentTime() {
   });
 }
 
-server.listen(3001, () => {
-  console.log('서버가 실행 중입니다! 주소: http://localhost:3001');
+const PORT = process.env.PORT || 3001;
+server.listen(PORT, () => {
+  console.log(`서버가 실행 중입니다! 포트: ${PORT}`);
 });
+
+// server.listen(3001, () => {
+//   console.log('서버가 실행 중입니다! 주소: http://localhost:3001');
+// });

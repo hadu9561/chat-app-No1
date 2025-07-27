@@ -61,10 +61,10 @@ io.on('connection', (socket) => {
 
 function getCurrentTime() {
   const now = new Date();
-  return now.toLocaleTimeString('ko-KR', {
-    hour: '2-digit',
-    minute: '2-digit'
-  });
+  const koreaTime = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+  const hours = koreaTime.getUTCHours().toString().padStart(2, '0');
+  const minutes = koreaTime.getUTCMinutes().toString().padStart(2, '0');
+  return `${hours}:${minutes}`;
 }
 
 const PORT = process.env.PORT || 3001;

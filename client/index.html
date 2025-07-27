@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>채팅방</title>
+    <style>
+      body {
+        font-family: Arial;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+
+      #nickname-section {
+        margin-top: 30px;
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+      }
+
+      #chat-section {
+        width: 100%;
+        max-width: 600px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+
+      #form {
+        position: sticky;
+        top: 0;
+        width: 100%;
+        max-width: 600px;
+        display: flex;
+        justify-content: center;
+        padding: 10px;
+        background: white;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        z-index: 1;
+      }
+
+      #form input {
+        flex: 1;
+        padding: 10px;
+        font-size: 16px;
+      }
+
+      #form button {
+        padding: 10px;
+      }
+      
+      #nickname-section input {
+        padding: 10px;
+        font-size: 16px;
+        flex: 1;
+      }
+
+      #nickname-section button {
+        padding: 10px;
+        font-size: 16px;
+      }
+
+
+      #messages {
+        display: flex;
+        flex-direction: column;
+        overflow-y: auto;
+        max-height: 500px;
+        list-style-type: none;
+        padding: 0 10px;
+        width: 100%;
+        max-width: 600px;
+        margin: 10;
+      }
+
+      .message-box {
+        background-color: #e1ffc7;
+        padding: 8px 12px;
+        border-radius: 10px;
+        margin: 5px 0;
+        display: inline-block;
+        max-width: 70%;
+      }
+
+      .my-message {
+        background-color: #fff8b5; /* 노랑 */
+        align-self: flex-end;
+      }
+
+      .system-message {
+        background-color: #e0e0e0; /* 회색 */
+        color: #555;
+        font-style: italic;
+        text-align: center;
+      }
+
+      #messages li {
+        display: flex;
+        justify-content: flex-start;
+      }
+
+      .time-label {
+        font-size: 12px;
+        color: #888;
+        text-align: center;
+        margin: 8px 0 4px 0;
+      }
+      @media (max-width: 600px) {
+        body {
+          font-size: 16px;
+          padding: 10px;
+        }
+
+        #nickname-section {
+          flex-direction: column;
+          align-items: stretch;
+          width: 90%;
+          gap: 10px;
+        }
+
+        #nickname-input {
+          font-size: 18px;
+          padding: 12px;
+        }
+
+        #nickname-button {
+          font-size: 18px;
+          padding: 12px;
+        }
+
+        #form {
+          flex-direction: row; /* 가로 배치 */
+          align-items: center; /* 세로 중앙 정렬 */
+          gap: 8px;
+          padding: 10px;
+        }
+
+        #form input {
+          flex: 1;  /* 입력창이 가능한 넓이 차지 */
+          font-size: 16px;
+          padding: 10px;
+        }
+
+        #form button {
+          flex: 0 0 auto;  /* 버튼 크기 고정 */
+          font-size: 14px;
+          padding: 8px 12px;
+          min-width: 60px; /* 너무 작아지지 않게 최소 크기 지정 */
+        }
+
+        #messages {
+          max-height: 60vh;
+          padding: 0 5px;
+        }
+
+        .message-box {
+          font-size: 16px;
+          padding: 10px 14px;
+        }
+
+        .time-label {
+          font-size: 12px;
+        }
+
+        h1 {
+          font-size: 24px;
+        }
+
+        #user-count {
+          font-size: 16px;
+          margin-bottom: 10px;
+        }
+      }
+
+    </style>
+  </head>
+  <body>
+    <h1>울 가족 채팅방</h1>
+    <p id="user-count">0명 접속 중</p>
+
+    <!-- 닉네임 입력 -->
+    <div id="nickname-section">
+      <input id="nickname-input" autocomplete="off" placeholder="닉네임을 입력하세요" />
+      <button id="nickname-button">입장</button>
+    </div>
+
+    <!-- 채팅 화면 -->
+    <div id="chat-section" style="display:none;">
+      <form id="form">
+        <input id="input" placeholder="메시지를 입력하세요" />
+        <button>전송</button>
+      </form>
+      <ul id="messages"></ul>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+      const socket = io();
+      let nickname = '';
+      let prevTime = null; // ⬅️ 시간 비교 변수
+
+      const nicknameInput = document.getElementById('nickname-input');
+      const nicknameButton = document.getElementById('nickname-button');
+      const nicknameSection = document.getElementById('nickname-section');
+      const chatSection = document.getElementById('chat-section');
+
+      nicknameButton.addEventListener('click', () => {
+        const name = nicknameInput.value.trim();
+        if (name !== '') {
+          nickname = name;
+          socket.emit('set nickname', nickname);
+          nicknameSection.style.display = 'none';
+          chatSection.style.display = 'block';
+        }
+      });
+
+      const form = document.getElementById('form');
+      const input = document.getElementById('input');
+      const messages = document.getElementById('messages');
+
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        if (input.value) {
+          socket.emit('chat message', `${nickname}: ${input.value}`);
+          input.value = '';
+        }
+      });
+
+      socket.on('chat message', function (data) {
+        const item = document.createElement('li');
+        const box = document.createElement('div');
+        box.classList.add('message-box');
+
+        // 시간 비교 및 표시
+        const currentTime = data.time;
+        if (prevTime === null || prevTime !== currentTime) {
+          const timeElem = document.createElement('div');
+          timeElem.textContent = currentTime;
+          timeElem.classList.add('time-label');
+          messages.prepend(timeElem);
+        }
+        prevTime = currentTime;
+
+        if (data.type === 'system') {
+          box.classList.add('system-message');
+          box.textContent = data.text;
+          item.style.justifyContent = 'center';
+        } else if (data.sender === nickname) {
+          box.classList.add('my-message');
+          box.textContent = data.text;
+          item.style.justifyContent = 'flex-end';
+        } else {
+          box.textContent = data.text;
+          item.style.justifyContent = 'flex-start';
+        }
+
+        item.appendChild(box);
+        messages.prepend(item);
+      });
+
+      socket.on('user count', function (count) {
+        console.log('👥 사용자 수 업데이트됨:', count);
+        document.title = `채팅방 (${count}명 접속 중)`;
+        document.getElementById('user-count').textContent = `${count}명 접속 중`;
+      });
+    </script>
+  </body>
+</html>

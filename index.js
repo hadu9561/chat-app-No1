@@ -1,3 +1,5 @@
+require('dotenv').config(); // ← 맨 위에 추가
+
 const mongoose = require('mongoose');
 const express = require('express');
 const http = require('http');

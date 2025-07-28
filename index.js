@@ -9,7 +9,7 @@ const server = http.createServer(app);
 const io = new Server(server);
 
 // ✅ MongoDB 연결
-const MONGO_URI = 'mongodb+srv://hadu9561:Hadu956132!@cluster0.vmw8p3p.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0';
+const MONGO_URI = process.env.MONGO_URI;
 
 mongoose.connect(MONGO_URI)
   .then(() => console.log('✅ MongoDB 연결 성공!'))

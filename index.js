@@ -1,3 +1,4 @@
+console.log('MONGO_URI:', process.env.MONGO_URI);
 
 const mongoose = require('mongoose');
 const express = require('express');

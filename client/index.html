@@ -208,6 +208,8 @@
       const chatSection = document.getElementById('chat-section');
       const messages = document.getElementById('messages');
       const input = document.getElementById('input');
+      const form = document.getElementById('form');
+
 
       nicknameButton.addEventListener('click', () => {
         const name = nicknameInput.value.trim();
@@ -223,7 +225,7 @@
       form.addEventListener('submit', function (e) {
         e.preventDefault();
         if (input.value.trim()) {
-          socket.emit('chat message', `${nickname}: ${input.value.trim()}`);
+          socket.emit('chat message', input.value.trim());
           input.value = '';
         }
       });
@@ -296,3 +298,4 @@
     </script>
   </body>
 </html>
+

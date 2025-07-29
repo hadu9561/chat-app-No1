@@ -65,7 +65,7 @@
 
       #messages {
         display: flex;
-        flex-direction: column-reverse;
+        flex-direction: column;
         overflow-y: auto;
         max-height: 500px;
         list-style-type: none;
@@ -236,7 +236,7 @@
           renderMessage(data, false);
         });
         // 최신 메시지가 보이도록 스크롤 맨 아래로
-        messages.scrollTop = messages.scrollHeight;
+        messages.scrollTop = 0;
       });
 
       // 새 메시지 받기
@@ -253,11 +253,8 @@
           const timeElem = document.createElement('div');
           timeElem.textContent = currentTime;
           timeElem.classList.add('time-label');
-          if (isNew) {
-            messages.appendChild(timeElem);
-          } else {
-            messages.insertBefore(timeElem, messages.firstChild);
-          }
+          messages.insertBefore(timeElem, messages.firstChild);
+
           prevTime = currentTime;
         }
 
@@ -280,9 +277,9 @@
 
         item.appendChild(box);
         if (isNew) {
-          messages.appendChild(item);
-          // 새 메시지 오면 스크롤 아래로 이동
-          messages.scrollTop = messages.scrollHeight;
+          messages.insertBefore(item, messages.firstChild);
+          // 새 메시지 오면 스크롤 맨 위로 이동
+          messages.scrollTop = 0;
         } else {
           messages.insertBefore(item, messages.firstChild);
         }

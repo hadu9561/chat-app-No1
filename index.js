@@ -96,9 +96,11 @@ function getCurrentTime() {
   const now = new Date();
   return now.toLocaleTimeString('ko-KR', {
     hour: '2-digit',
-    minute: '2-digit'
+    minute: '2-digit',
+    timeZone: 'Asia/Seoul'
   });
 }
+
 
 // ✅ 서버 실행
 const PORT = process.env.PORT || 3001;

@@ -44,6 +44,7 @@ io.on('connection', (socket) => {
   io.emit('user count', userCount);
   // ✅ 이전 메시지 보내기
   Message.find().sort({ createdAt: -1 }).limit(80).then(messages => {
+    messages.reverse();
     socket.emit('chat history', messages);
   });
 

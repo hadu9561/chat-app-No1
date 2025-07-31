@@ -18,13 +18,6 @@ mongoose.connect(MONGO_URI)
  // chatDB는 원하는 DB 이름
   .then(() => console.log('✅ MongoDB 연결 성공!'))
   .catch(err => console.error('❌ MongoDB 연결 실패:', err));
-mongoose.connection.on('error', err => {
-  console.error('❌ MongoDB 연결 오류 발생:', err);
-});
-
-mongoose.connection.on('disconnected', () => {
-  console.warn('⚠️ MongoDB 연결 끊김. 재연결 시도...');
-});
 
 // ✅ 메시지 스키마/모델 정의
 const messageSchema = new mongoose.Schema({
@@ -50,7 +43,7 @@ io.on('connection', (socket) => {
   userCount++;
   io.emit('user count', userCount);
   // ✅ 이전 메시지 보내기
-  Message.find().sort({ createdAt: 1 }).limit(50).then(messages => {
+  Message.find().sort({ createdAt: -1 }).limit(70).then(messages => {
     socket.emit('chat history', messages);
   });
 

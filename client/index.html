@@ -164,9 +164,6 @@
 
         .time-label {
           font-size: 12px;
-          color: #888;
-          text-align: center;
-          margin: 8px 0 4px 0;
         }
 
         h1 {
@@ -182,137 +179,116 @@
   </head>
   <body>
     <h1>채팅방</h1>
-  <p id="user-count">0명 접속 중</p>
+    <p id="user-count">0명 접속 중</p>
 
-  <div id="nickname-section">
-    <input id="nickname-input" autocomplete="off" placeholder="닉네임을 입력하세요" />
-    <button id="nickname-button">입장</button>
-  </div>
+    <!-- 닉네임 입력 -->
+    <div id="nickname-section">
+      <input id="nickname-input" autocomplete="off" placeholder="닉네임을 입력하세요" />
+      <button id="nickname-button">입장</button>
+    </div>
 
-  <div id="chat-section" style="display:none;">
-    <button id="load-more-btn" style="margin:10px auto; display:block;">더보기</button>
-    <form id="form">
-      <input id="input" placeholder="메시지를 입력하세요" autocomplete="off" />
-      <button>전송</button>
-    </form>
-    <ul id="messages"></ul>
-  </div>
+    <!-- 채팅 화면 -->
+    <div id="chat-section" style="display:none;">
+      <form id="form">
+        <input id="input" placeholder="메시지를 입력하세요" autocomplete="off"/>
+        <button>전송</button>
+      </form>
+      <ul id="messages"></ul>
+    </div>
 
-  <script src="/socket.io/socket.io.js"></script>
-  <script>
-    const socket = io();
-    let nickname = '';
-    let prevTime = null;
-    let currentPage = 0;
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+      const socket = io();
+      let nickname = '';
+      let prevTime = null;
 
-    const nicknameInput = document.getElementById('nickname-input');
-    const nicknameButton = document.getElementById('nickname-button');
-    const nicknameSection = document.getElementById('nickname-section');
-    const chatSection = document.getElementById('chat-section');
-    const messages = document.getElementById('messages');
-    const input = document.getElementById('input');
-    const loadMoreBtn = document.getElementById('load-more-btn');
-    const form = document.getElementById('form');
+      const nicknameInput = document.getElementById('nickname-input');
+      const nicknameButton = document.getElementById('nickname-button');
+      const nicknameSection = document.getElementById('nickname-section');
+      const chatSection = document.getElementById('chat-section');
+      const messages = document.getElementById('messages');
+      const input = document.getElementById('input');
 
-    nicknameButton.addEventListener('click', () => {
-      const name = nicknameInput.value.trim();
-      if (name !== '') {
-        nickname = name;
-        socket.emit('set nickname', nickname);
-        nicknameSection.style.display = 'none';
-        chatSection.style.display = 'block';
-        input.focus();
-      }
-    });
-
-    loadMoreBtn.addEventListener('click', () => {
-      currentPage++;
-      socket.emit('load more', currentPage);
-    });
-
-    form.addEventListener('submit', function (e) {
-      e.preventDefault();
-      if (input.value.trim()) {
-        socket.emit('chat message', input.value.trim());
-        input.value = '';
-      }
-    });
-
-    // 최초 채팅 기록 받기 (page=0: 최신 메시지 70개)
-    socket.on('chat history', function ({ messages: history, page }) {
-      if (page === 0) {
-        messages.innerHTML = '';
-        prevTime = null;
-        // 최신 메시지부터 위에 올라가야 하므로, 배열 역순으로 렌더링 (즉, newest부터 first)
-        for (let i = history.length - 1; i >= 0; i--) {
-          renderMessage(history[i], false);
+      nicknameButton.addEventListener('click', () => {
+        const name = nicknameInput.value.trim();
+        if (name !== '') {
+          nickname = name;
+          socket.emit('set nickname', nickname);
+          nicknameSection.style.display = 'none';
+          chatSection.style.display = 'block';
+          input.focus();
         }
-        messages.scrollTop = 0; // 맨 위가 최신 메시지이므로 스크롤 맨 위로
-      } else {
-        // 더보기 클릭 시 이전 메시지(과거 메시지)들이 맨 아래로 쌓임
-        // 이전 메시지는 오래된 순서대로 들어오므로, 순서대로 append
-        history.forEach(data => {
-          renderMessage(data, false, true); // 세번째 인자 true: 아래에 추가
+      });
+
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        if (input.value.trim()) {
+          socket.emit('chat message', `${nickname}: ${input.value.trim()}`);
+          input.value = '';
+        }
+      });
+
+      // 채팅 기록 받기
+      socket.on('chat history', function (history) {
+        prevTime = null; // 초기화
+        // 기록 순서대로 렌더링 (오래된 메시지부터)
+        history.forEach((data) => {
+          renderMessage(data, false);
         });
-      }
-    });
+        // 최신 메시지가 보이도록 스크롤 맨 아래로
+        messages.scrollTop = 0;
+      });
 
-    // 새 메시지 받기 (실시간)
-    socket.on('chat message', function (data) {
-      renderMessage(data, true);
-      messages.scrollTop = 0; // 새 메시지는 맨 위에 추가되므로 스크롤 맨 위로 이동
-    });
+      // 새 메시지 받기
+      socket.on('chat message', function (data) {
+        renderMessage(data, true);
+      });
 
-    // 메시지 렌더링 함수
-    // isNew: 새 메시지면 맨 위에 추가, 이전 메시지면 맨 아래에 추가 (더보기 시)
-    // toBottom: true면 아래에 추가 (더보기 메시지용)
-    function renderMessage(data, isNew = true, toBottom = false) {
-      const currentTime = data.time;
-
-      // 시간 표시: 이전 시간과 다르면 시간 라벨 표시
-      if (prevTime === null || prevTime !== currentTime) {
-        const timeElem = document.createElement('div');
-        timeElem.textContent = currentTime;
-        timeElem.classList.add('time-label');
-        if (toBottom) {
-          messages.appendChild(timeElem);
-        } else {
+      // 메시지 렌더링 함수
+      // isNew: true면 prepend 대신 append로 넣음 (최신 메시지는 아래로)
+      function renderMessage(data, isNew = true) {
+        const currentTime = data.time;
+        // 시간 표시: 이전 시간과 다르면 시간 라벨 표시
+        if (prevTime === null || prevTime !== currentTime) {
+          const timeElem = document.createElement('div');
+          timeElem.textContent = currentTime;
+          timeElem.classList.add('time-label');
           messages.insertBefore(timeElem, messages.firstChild);
+          prevTime = currentTime;
         }
-        prevTime = currentTime;
+
+        const item = document.createElement('li');
+        const box = document.createElement('div');
+        box.classList.add('message-box');
+
+        if (data.type === 'system') {
+          box.classList.add('system-message');
+          box.textContent = data.text;
+          item.style.justifyContent = 'center';
+        } else if (data.sender === nickname) {
+          box.classList.add('my-message');
+          box.textContent = data.text;
+          item.style.justifyContent = 'flex-end';
+        } else {
+          box.textContent = data.text;
+          item.style.justifyContent = 'flex-start';
+        }
+
+        item.appendChild(box);
+        if (isNew) {
+          messages.insertBefore(item, messages.firstChild);
+          // 새 메시지 오면 스크롤 맨 위로 이동
+          messages.scrollTop = 0;
+        } else {
+          messages.insertBefore(item, messages.firstChild);
+        }
       }
 
-      const item = document.createElement('li');
-      const box = document.createElement('div');
-      box.classList.add('message-box');
-
-      if (data.type === 'system') {
-        box.classList.add('system-message');
-        box.textContent = data.text;
-        item.style.justifyContent = 'center';
-      } else if (data.sender === nickname) {
-        box.classList.add('my-message');
-        box.textContent = data.text;
-        item.style.justifyContent = 'flex-end';
-      } else {
-        box.textContent = data.text;
-        item.style.justifyContent = 'flex-start';
-      }
-
-      item.appendChild(box);
-
-      if (toBottom) {
-        messages.appendChild(item); // 이전 메시지는 아래에 추가
-      } else {
-        messages.insertBefore(item, messages.firstChild); // 새 메시지는 위에 추가
-      }
-    }
-
-    // 사용자 수 표시
-    socket.on('user count', function (count) {
-      document.title = `채팅방 (${count}명 접속 중)`;
-      document.getElementById('user-count').textContent = `${count}명 접속 중`;
-    });
-  </script>
-</body>
+      // 사용자 수 표시
+      socket.on('user count', function (count) {
+        document.title = `채팅방 (${count}명 접속 중)`;
+        document.getElementById('user-count').textContent = `${count}명 접속 중`;
+      });
+    </script>
+  </body>
 </html>

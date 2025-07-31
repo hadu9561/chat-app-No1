@@ -12,9 +12,10 @@ const server = http.createServer(app);
 const io = new Server(server);
 
 // ✅ MongoDB 연결
-const MONGO_URI = 'mongodb+srv://hadu9561:Hadu956132!@cluster0.vmw8p3p.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0';
+const MONGO_URI = 'mongodb+srv://hadu9561:Hadu956132!@cluster0.vmw8p3p.mongodb.net/chatDB?retryWrites=true&w=majority&appName=Cluster0';
 
 mongoose.connect(MONGO_URI)
+ // chatDB는 원하는 DB 이름
   .then(() => console.log('✅ MongoDB 연결 성공!'))
   .catch(err => console.error('❌ MongoDB 연결 실패:', err));
 
@@ -42,7 +43,6 @@ io.on('connection', (socket) => {
   console.log('사용자 연결됨:', socket.id);
   userCount++;
   io.emit('user count', userCount);
-
   // ✅ 이전 메시지 보내기
   Message.find().sort({ createdAt: 1 }).limit(50).then(messages => {
     socket.emit('chat history', messages);

@@ -253,8 +253,11 @@
           const timeElem = document.createElement('div');
           timeElem.textContent = currentTime;
           timeElem.classList.add('time-label');
-          messages.insertBefore(timeElem, messages.firstChild);
-
+          if (isNew) {
+            messages.appendChild(timeElem);
+          } else {
+            messages.insertBefore(timeElem, messages.firstChild);
+          }
           prevTime = currentTime;
         }
 
